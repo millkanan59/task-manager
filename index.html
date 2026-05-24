@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>タスク管理</title>
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; background: #f5f5f5; }
+    .app { max-width: 430px; margin: 0 auto; background: #fff; min-height: 100vh; display: flex; flex-direction: column; }
+    .apphead { padding: 56px 20px 0; background: #fff; }
+    .apphead-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .apphead-title { font-size: 28px; font-weight: 600; color: #1a1a1a; }
+    .add-fab { width: 40px; height: 40px; border-radius: 50%; background: #f0f0f0; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; color: #1a1a1a; }
+    .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .stat { background: #f8f8f8; border-radius: 12px; padding: 12px 14px; }
+    .stat-n { font-size: 24px; font-weight: 600; color: #1a1a1a; }
+    .stat-n.red { color: #E24B4A; }
+    .stat-l { font-size: 12px; color: #888; margin-top: 2px; }
+    .tabs { display: flex; border-bottom: 1px solid #f0f0f0; }
+    .tab { flex: 1; padding: 12px 0; font-size: 14px; text-align: center; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-left: none; border-right: none; border-top: none; }
+    .tab.active { color: #1a1a1a; font-weight: 600; border-bottom: 2px solid #1a1a1a; }
+    .tasklist { flex: 1; padding: 12px 16px; overflow-y: auto; }
+    .task { background: #fff; border: 1px solid #f0f0f0; border-radius: 14px; padding: 14px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; }
+    .task.done { opacity: 0.4; }
+    .task.done .tname { text-decoration: line-through; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .d-high { background: #E24B4A; }
+    .d-mid { background: #EF9F27; }
+    .d-low { background: #639922; }
+    .d-none { background: #ddd; }
+    .tbody { flex: 1; min-width: 0; }
+    .tname { font-size: 15px; color: #1a1a1a; line-height: 1.4; }
+    .tmeta { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+    .ttag { font-size: 11px; padding: 2px 8px; border-radius: 8px; }
+    .tag-work { background: #E6F1FB; color: #0C447C; }
+    .tag-private { background: #FBEAF0; color: #72243E; }
+    .tag-routine { background: #EAF3DE; color: #27500A; }
+    .tag-other { background: #F1EFE8; color: #444441; }
+    .tdue { font-size: 11px; color: #888; }
+    .tdue.urgent { color: #E24B4A; font-weight: 600; }
+    .tdue.soon { color: #EF9F27; font-weight: 600; }
+    .tchk { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #ddd; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #bbb; background: #fafafa; cursor: pointer; }
+    .task.done .tchk { background: #EAF3DE; border-color: #97C459; color: #27500A; }
+    .addinput { padding: 16px; border-top: 1px solid #f0f0f0; background: #fff; display: none; }
+    .addinput.open { display: block; }
+    .addinput input, .addinput select { width: 100%; margin-bottom: 10px; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 10px; font-size: 14px; color: #1a1a1a; background: #fff; }
+    .addinput-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .savebtn { width: 100%; padding: 12px; font-size: 15px; font-weight: 600; background: #1a1a1a; color: #fff; border: none; border-radius: 12px; cursor: pointer; margin-top: 4px; }
+    .empty { text-align: center; padding: 3rem 0; color: #bbb; font-size: 14px; }
+    .aibtn { width: 100%; padding: 14px 0; font-size: 13px; color: #888; background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; border-top: 1px solid #f0f0f0; }
+    .done-header { font-size: 11px; font-weight: 600; color: #bbb; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 0 6px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="apphead">
+    <div class="apphead-row">
+      <span class="apphead-title">タスク</span>
+      <button class="add-fab" onclick="toggleAdd()" aria-label="タスクを追加">
+        <i class="ti ti-plus"></i>
+      </button>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-n red" id="s-today">0</div><div class="stat-l">今日期限</div></div>
+      <div class="stat"><div class="stat-n" id="s-undone">0</div><div class="stat-l">未完了</div></div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="setTab('today',this)">今日</button>
+      <button class="tab" onclick="setTab('week',this)">今週</button>
+      <button class="tab" onclick="setTab('all',this)">すべて</button>
+    </div>
+  </div>
+
+  <div class="tasklist" id="tasklist"></div>
+
+  <div class="addinput" id="addinput">
+    <input type="text" id="ni" placeholder="タスク名..." />
+    <div class="addinput-row">
+      <input type="date" id="nd" />
+      <select id="nt">
+        <option value="work">仕事</option>
+        <option value="private">プライベート</option>
+        <option value="routine">ルーティン</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+    <button class="savebtn" onclick="saveTask()">追加する</button>
+  </div>
+
+  <button class="aibtn" onclick="alert('Claude API連携は次のステップで追加します！')">
+    <i class="ti ti-sparkles"></i> AIに優先順位を聞く（準備中）
+  </button>
+</div>
+
+<script>
+const TL = {work:'仕事', private:'プライベート', routine:'ルーティン', other:'その他'};
+const INIT = [
+  {id:'t1', name:'iPadパスコード忘れ対応', due:'2025-05-24', tag:'private', done:false},
+  {id:'t2', name:'習慣リスト修正（子供用）', due:'2025-05-24', tag:'routine', done:false},
+  {id:'t3', name:'Noteアカウント設定', due:'2025-05-24', tag:'work', done:false},
+  {id:'t4', name:'ObsidianPC/iPhone連携', due:'2025-05-24', tag:'work', done:false},
+  {id:'t5', name:'日記', due:'2025-05-24', tag:'private', done:false},
+  {id:'t6', name:'目標ワークシート（習慣化含む）', due:'2025-05-24', tag:'private', done:false},
+  {id:'t7', name:'開発ポートフォリオ棚卸し', due:'2025-05-31', tag:'work', done:false},
+  {id:'t8', name:'スケジュール手帳に記載', due:'2025-05-31', tag:'private', done:false},
+  {id:'t9', name:'旅行日記まとめ', due:'2025-05-31', tag:'private', done:false},
+  {id:'t10', name:'ディズニー準備', due:'2025-06-01', tag:'private', done:false},
+  {id:'t11', name:'旅行動画まとめ', due:'', tag:'private', done:false},
+  {id:'t12', name:'パスワード変更（順次）', due:'', tag:'other', done:false},
+  {id:'t13', name:'ノートン解約リマインド', due:'2027-03-01', tag:'other', done:false},
+];
+
+let tasks = [], tab = 'today';
+
+function days(due) {
+  if (!due) return null;
+  return Math.ceil((new Date(due) - new Date()) / 86400000);
+}
+function dot(t) {
+  if (t.done) return 'd-none';
+  const d = days(t.due);
+  if (d === null) return 'd-none';
+  if (d < 0 || d <= 1) return 'd-high';
+  if (d <= 7) return 'd-mid';
+  return 'd-low';
+}
+function dueTxt(due) {
+  const d = days(due);
+  if (!due) return '';
+  if (d < 0) return '<span class="tdue urgent">期限超過</span>';
+  if (d === 0) return '<span class="tdue urgent">今日まで</span>';
+  if (d === 1) return '<span class="tdue soon">明日まで</span>';
+  if (d <= 3) return `<span class="tdue soon">${d}日後</span>`;
+  return `<span class="tdue">${due}</span>`;
+}
+function score(t) {
+  if (t.done) return 999;
+  const d = days(t.due);
+  if (d === null) return 60;
+  if (d < 0) return 0;
+  if (d <= 1) return 1;
+  if (d <= 3) return 5;
+  if (d <= 7) return 15;
+  return 40;
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function filterTasks() {
+  const s = [...tasks].sort((a,b) => score(a) - score(b));
+  if (tab === 'today') return s.filter(t => { const d = days(t.due); return d !== null && d >= 0 && d <= 1 && !t.done; });
+  if (tab === 'week')  return s.filter(t => { const d = days(t.due); return d !== null && d >= 0 && d <= 7 && !t.done; });
+  return s;
+}
+
+function render() {
+  const todayN = tasks.filter(t => !t.done && days(t.due) !== null && days(t.due) >= 0 && days(t.due) <= 1).length;
+  document.getElementById('s-today').textContent = todayN;
+  document.getElementById('s-undone').textContent = tasks.filter(t => !t.done).length;
+
+  const list = filterTasks();
+  const el = document.getElementById('tasklist');
+  if (!list.length) { el.innerHTML = '<div class="empty">タスクなし</div>'; return; }
+
+  const undone = list.filter(t => !t.done);
+  const done   = list.filter(t =>  t.done);
+  let html = undone.map(t => taskHTML(t)).join('');
+  if (done.length) {
+    html += `<div class="done-header">完了済み (${done.length})</div>`;
+    html += done.map(t => taskHTML(t)).join('');
+  }
+  el.innerHTML = html;
+}
+
+function taskHTML(t) {
+  return `<div class="task${t.done?' done':''}">
+    <div class="dot ${dot(t)}"></div>
+    <div class="tbody">
+      <div class="tname">${esc(t.name)}</div>
+      <div class="tmeta">
+        <span class="ttag tag-${t.tag||'other'}">${TL[t.tag]||'その他'}</span>
+        ${dueTxt(t.due)}
+      </div>
+    </div>
+    <div class="tchk" onclick="toggle('${t.id}')" role="button" aria-label="${t.done?'未完了に戻す':'完了'}">
+      <i class="ti ${t.done?'ti-check':'ti-circle'}" style="font-size:15px"></i>
+    </div>
+  </div>`;
+}
+
+function toggle(id) { const t = tasks.find(t=>t.id===id); if(t){t.done=!t.done; save(); render();} }
+function setTab(t, el) { tab=t; document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); el.classList.add('active'); render(); }
+function toggleAdd() { const el=document.getElementById('addinput'); el.classList.toggle('open'); if(el.classList.contains('open')) document.getElementById('ni').focus(); }
+function saveTask() {
+  const name = document.getElementById('ni').value.trim();
+  if (!name) return;
+  tasks.push({id: Date.now().toString(), name, due: document.getElementById('nd').value, tag: document.getElementById('nt').value, done: false});
+  document.getElementById('ni').value = '';
+  document.getElementById('nd').value = '';
+  document.getElementById('addinput').classList.remove('open');
+  save(); render();
+}
+
+function save() { localStorage.setItem('tasks', JSON.stringify(tasks)); }
+function load() { const r = localStorage.getItem('tasks'); tasks = r ? JSON.parse(r) : INIT; render(); }
+load();
+</script>
+</body>
+</html>
